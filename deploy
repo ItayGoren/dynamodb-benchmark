@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+sam build
+sam deploy \
+    --stack-name dynamo-benchmark \
+    --no-confirm-changeset \
+    --no-fail-on-empty-changeset \
+    --capabilities CAPABILITY_NAMED_IAM \
+    --region us-east-1 \
+    --s3-bucket alike-cf-test-us-east-1 \
+    --s3-prefix dynamo-benchmark

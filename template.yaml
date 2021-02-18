@@ -1,0 +1,76 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: delete me if you see me
+
+
+# ------------------- Metrics Resources ------------------
+Resources:
+  WithSecondaryKey:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: composite_code
+          AttributeType: S
+        - AttributeName: to_system
+          AttributeType: S
+      KeySchema:
+        - AttributeName: composite_code
+          KeyType: "HASH"
+        - AttributeName: to_system
+          KeyType: "RANGE"
+
+  PrimaryKeyOnly:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: composite_code_to_system
+          AttributeType: S
+      KeySchema:
+        - AttributeName: composite_code_to_system
+          KeyType: "HASH"
+
+  Benchmark:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: benchmark.api
+      Runtime: python3.8
+      Tracing: Active
+      MemorySize: 3072
+      Timeout: 30
+      Environment:
+        Variables:
+          PRIMARY_KEY_ONLY: !Ref PrimaryKeyOnly
+          WITH_SECONDARY_KEY: !Ref WithSecondaryKey
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            Effect: Allow
+            Action:
+              - "dynamodb:PutItem"
+              - "dynamodb:GetItem"
+            Resource:
+              - !GetAtt PrimaryKeyOnly.Arn
+              - !GetAtt WithSecondaryKey.Arn
+      Events:
+        Upload:
+          Type: Api
+          Properties:
+            Path: /upload_data
+            Method: post
+            RestApiId: !Ref ApiGateway
+        Benchmark:
+          Type: Api
+          Properties:
+            Path: /benchmark
+            Method: get
+            RestApiId: !Ref ApiGateway
+
+
+  ApiGateway:
+    Type: AWS::Serverless::Api
+    Properties:
+      TracingEnabled: True
+      StageName: Prod
